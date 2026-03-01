@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="dnaGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#06b6d4;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <circle cx="50" cy="50" r="45" fill="#0f172a" stroke="url(#dnaGrad)" stroke-width="3"/>
+  <path d="M30 20 Q50 35 70 20 Q50 50 70 80 Q50 65 30 80 Q50 50 30 20Z" 
+        fill="none" stroke="url(#dnaGrad)" stroke-width="2.5" opacity="0.9"/>
+  <circle cx="35" cy="30" r="3" fill="#6366f1"/>
+  <circle cx="65" cy="30" r="3" fill="#06b6d4"/>
+  <circle cx="50" cy="50" r="3" fill="#8b5cf6"/>
+  <circle cx="35" cy="70" r="3" fill="#06b6d4"/>
+  <circle cx="65" cy="70" r="3" fill="#6366f1"/>
+  <line x1="35" y1="30" x2="65" y2="30" stroke="#6366f1" stroke-width="1" opacity="0.5"/>
+  <line x1="35" y1="70" x2="65" y2="70" stroke="#06b6d4" stroke-width="1" opacity="0.5"/>
+</svg>

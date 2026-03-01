@@ -1,0 +1,136 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Content DNA OS – Evolutionary AI Content Engine
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+    Runtime: python3.12
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        AWS_REGION_NAME: !Ref AWS::Region
+        DYNAMO_TABLE: !Ref ContentDNATable
+
+Resources:
+  # ──── API Gateway ──────────────────────────────────────────────────────────
+  ContentDNAApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type'"
+        AllowOrigin: "'*'"
+
+  # ──── Lambda Function ──────────────────────────────────────────────────────
+  ContentDNAFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: content-dna-os
+      Handler: lambda_handler.handler
+      CodeUri: backend/
+      Description: Content DNA OS mutation engine
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ContentDNATable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource: '*'
+      Events:
+        Root:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ContentDNAApi
+            Path: /
+            Method: GET
+        Health:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ContentDNAApi
+            Path: /health
+            Method: GET
+        Evolve:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ContentDNAApi
+            Path: /api/evolve
+            Method: POST
+        EvolveLab:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ContentDNAApi
+            Path: /api/evolve/lab
+            Method: POST
+        Strategies:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ContentDNAApi
+            Path: /api/strategies
+            Method: GET
+        Platforms:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ContentDNAApi
+            Path: /api/platforms
+            Method: GET
+        DNAExtract:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ContentDNAApi
+            Path: /api/dna/extract
+            Method: POST
+        FitnessScore:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ContentDNAApi
+            Path: /api/fitness/score
+            Method: POST
+
+  # ──── DynamoDB Table ───────────────────────────────────────────────────────
+  ContentDNATable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ContentDNA
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      Tags:
+        - Key: Project
+          Value: ContentDNAOS
+
+  # ──── S3 Bucket (archival) ─────────────────────────────────────────────────
+  ContentArchiveBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'content-dna-archive-${AWS::AccountId}'
+      LifecycleConfiguration:
+        Rules:
+          - Id: ArchiveOldContent
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: 90
+                StorageClass: GLACIER
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub 'https://${ContentDNAApi}.execute-api.${AWS::Region}.amazonaws.com/prod/'
+  FunctionArn:
+    Description: Lambda Function ARN
+    Value: !GetAtt ContentDNAFunction.Arn
+  TableName:
+    Description: DynamoDB Table Name
+    Value: !Ref ContentDNATable
