@@ -189,3 +189,8 @@ class EvolutionLabResponse(BaseModel):
     all_mutations: list[MutationResult]
     rejected_mutations: list[MutationResult]
     generation_fitness: list[dict]
+
+
+class ContentRequest(BaseModel):
+    """Simple request body containing content text."""
+    content: str = Field(..., min_length=10, max_length=10000)

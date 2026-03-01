@@ -10,6 +10,7 @@ from ..core.models import (
     CreateResponse,
     EvolutionLabRequest,
     EvolutionLabResponse,
+    ContentRequest,
     DNAProfile,
     FitnessScore,
     MutationStrategy,
@@ -69,22 +70,18 @@ def evolve_lab(request: EvolutionLabRequest):
 # ── DNA Extraction ────────────────────────────────────────────────────────────
 
 @router.post("/dna/extract", response_model=DNAProfile)
-def extract_dna(content: str):
+def extract_dna(request: ContentRequest):
     """Extract the DNA profile from a content piece."""
-    if len(content) < 10:
-        raise HTTPException(status_code=400, detail="Content must be at least 10 characters")
-    return _dna_extractor.extract(content)
+    return _dna_extractor.extract(request.content)
 
 
 # ── Fitness Score ─────────────────────────────────────────────────────────────
 
 @router.post("/fitness/score", response_model=FitnessScore)
-def score_fitness(content: str):
+def score_fitness(request: ContentRequest):
     """Compute the fitness score for a content piece."""
-    if len(content) < 10:
-        raise HTTPException(status_code=400, detail="Content must be at least 10 characters")
-    dna = _dna_extractor.extract(content)
-    return _fitness_scorer.score(content, dna)
+    dna = _dna_extractor.extract(request.content)
+    return _fitness_scorer.score(request.content, dna)
 
 
 # ── Meta ──────────────────────────────────────────────────────────────────────

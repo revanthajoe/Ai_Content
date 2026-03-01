@@ -1,5 +1,17 @@
 const API_BASE = '/api'
 
+async function handleResponse(res) {
+  if (!res.ok) {
+    let detail = `API error: ${res.status}`
+    try {
+      const err = await res.json()
+      if (err.detail) detail = typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail)
+    } catch {}
+    throw new Error(detail)
+  }
+  return res.json()
+}
+
 export async function evolveContent(content, platform = 'general', strategy = null) {
   const body = { content, platform }
   if (strategy) body.strategy = strategy
@@ -9,8 +21,7 @@ export async function evolveContent(content, platform = 'general', strategy = nu
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
-  if (!res.ok) throw new Error(`API error: ${res.status}`)
-  return res.json()
+  return handleResponse(res)
 }
 
 export async function evolveInLab(content, platform = 'general', generations = 3, strategies = null) {
@@ -22,18 +33,33 @@ export async function evolveInLab(content, platform = 'general', generations = 3
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
-  if (!res.ok) throw new Error(`API error: ${res.status}`)
-  return res.json()
+  return handleResponse(res)
+}
+
+export async function extractDNA(content) {
+  const res = await fetch(`${API_BASE}/dna/extract`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  })
+  return handleResponse(res)
+}
+
+export async function scoreFitness(content) {
+  const res = await fetch(`${API_BASE}/fitness/score`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  })
+  return handleResponse(res)
 }
 
 export async function getStrategies() {
   const res = await fetch(`${API_BASE}/strategies`)
-  if (!res.ok) throw new Error(`API error: ${res.status}`)
-  return res.json()
+  return handleResponse(res)
 }
 
 export async function getPlatforms() {
   const res = await fetch(`${API_BASE}/platforms`)
-  if (!res.ok) throw new Error(`API error: ${res.status}`)
-  return res.json()
+  return handleResponse(res)
 }

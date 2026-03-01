@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Eye, Dna, Sparkles, AlertCircle } from 'lucide-react'
+import { extractDNA, scoreFitness } from '../api/client'
 import DNACard from './DNACard'
 import FitnessBar from './FitnessBar'
 
@@ -17,16 +18,8 @@ export default function DNAViewer() {
     setError(null)
     try {
       const [dnaRes, fitRes] = await Promise.all([
-        fetch('/api/dna/extract', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(content),
-        }).then(r => r.json()),
-        fetch('/api/fitness/score', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(content),
-        }).then(r => r.json()),
+        extractDNA(content),
+        scoreFitness(content),
       ])
       setDna(dnaRes)
       setFitness(fitRes)
