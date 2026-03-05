@@ -6,9 +6,10 @@ Uses Amazon Nova Pro (primary) and Nova Lite (fallback) — no marketplace subsc
 
 from __future__ import annotations
 import json
-import os
 import logging
 from typing import Optional
+
+from app.aws.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +21,8 @@ class BedrockClient:
     Falls back to Nova Lite, then gracefully to None when unavailable.
     """
 
-    PRIMARY_MODEL = "us.amazon.nova-pro-v1:0"
-    FALLBACK_MODEL = "us.amazon.nova-lite-v1:0"
+    PRIMARY_MODEL = settings.bedrock_primary_model
+    FALLBACK_MODEL = settings.bedrock_fallback_model
 
     def __init__(self):
         self._client = None
@@ -35,7 +36,7 @@ class BedrockClient:
             import boto3
             self._client = boto3.client(
                 "bedrock-runtime",
-                region_name=os.getenv("AWS_REGION", "us-east-1"),
+                region_name=settings.aws_region,
             )
             self._available = True
         except Exception:
@@ -50,6 +51,7 @@ class BedrockClient:
         content: str,
         strategy: str,
         platform: str = "general",
+        language: str = "english",
         max_tokens: int = 1024,
     ) -> Optional[str]:
         """
@@ -60,7 +62,7 @@ class BedrockClient:
         if not self._available or not self._client:
             return None
 
-        prompt = self._build_mutation_prompt(content, strategy, platform)
+        prompt = self._build_mutation_prompt(content, strategy, platform, language)
 
         # Try primary model, then fallback
         for model_id in [self._active_model, self.FALLBACK_MODEL]:
@@ -100,7 +102,7 @@ class BedrockClient:
             return None
 
     @staticmethod
-    def _build_mutation_prompt(content: str, strategy: str, platform: str) -> str:
+    def _build_mutation_prompt(content: str, strategy: str, platform: str, language: str = "english") -> str:
         """Build the prompt for mutation generation."""
         strategy_instructions = {
             "hook_amplification": (
@@ -130,16 +132,32 @@ class BedrockClient:
                 "Use appropriate line breaks, emoji anchors, short paragraphs, "
                 "and platform-native formatting conventions."
             ),
+            "regional_adaptation": (
+                "Adapt this content for Indian audiences. Use culturally relevant references, "
+                "idioms, examples, and analogies that resonate with people in India. "
+                "Replace Western-centric references with Indian equivalents. "
+                "If the content discusses business, use Indian market examples. "
+                "If it discusses culture, use references familiar to Indian readers. "
+                "Make it feel like it was originally written for an Indian audience."
+            ),
         }
 
         instruction = strategy_instructions.get(strategy, "Improve this content meaningfully.")
+
+        language_instruction = ""
+        if language and language != "english":
+            language_instruction = (
+                f"\n\nLANGUAGE: Write the output in {language}. "
+                f"Use natural, fluent {language} — not robotic translation. "
+                f"Preserve cultural nuances appropriate for {language}-speaking audiences."
+            )
 
         return f"""You are a content evolution engine. Your job is to structurally transform content, not paraphrase it.
 
 STRATEGY: {strategy}
 PLATFORM: {platform}
 
-INSTRUCTION: {instruction}
+INSTRUCTION: {instruction}{language_instruction}
 
 ORIGINAL CONTENT:
 {content}
@@ -152,3 +170,62 @@ RULES:
 - Output ONLY the transformed content, no explanations
 
 EVOLVED CONTENT:"""
+
+    def simulate_audience(self, content: str, platform: str = "general") -> Optional[dict]:
+        """Simulate audience reactions across Indian demographic segments."""
+        if not self._available or not self._client:
+            return None
+
+        prompt = f"""You are an audience simulation engine for the Indian digital content market.
+
+Analyze this content and simulate how different audience segments would react.
+
+CONTENT:
+{content}
+
+PLATFORM: {platform}
+
+For EACH of these 5 audience segments, provide:
+1. A reaction summary (1-2 sentences)
+2. Predicted engagement score (0-100)
+3. One sample comment they might leave
+4. Whether they'd share it (yes/no)
+
+SEGMENTS:
+- Gen Z India (18-24, Instagram/YouTube natives, mix Hindi-English)
+- Urban Professionals (25-40, LinkedIn power users, career-focused)
+- Rural Digital India (new smartphone users, WhatsApp-first, regional language)
+- College Students (competitive exam culture, meme-savvy, aspirational)
+- Business Owners (SME/startup founders, ROI-focused, time-poor)
+
+Respond in this exact JSON format:
+{{
+  "segments": [
+    {{
+      "name": "Gen Z India",
+      "reaction": "...",
+      "engagement_score": 75,
+      "sample_comment": "...",
+      "would_share": true,
+      "emoji_reaction": "🔥"
+    }}
+  ],
+  "overall_virality_score": 65,
+  "best_platform": "instagram",
+  "improvement_tip": "..."
+}}
+
+Output ONLY valid JSON, no markdown fences."""
+
+        for model_id in [self._active_model, self.FALLBACK_MODEL]:
+            result = self._invoke_nova(model_id, prompt, 1500)
+            if result:
+                try:
+                    import json as _json
+                    clean = result.strip()
+                    if clean.startswith("```"):
+                        clean = clean.split("\n", 1)[1].rsplit("```", 1)[0]
+                    return _json.loads(clean)
+                except Exception:
+                    logger.warning(f"Audience sim JSON parse failed for {model_id}")
+        return None

@@ -1,7 +1,7 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Dna, FlaskConical, Eye, Zap, Shield, GitBranch } from 'lucide-react'
+import { Dna, FlaskConical, Eye, Zap, Shield, GitBranch, Globe, Users, ThumbsUp, Share2 } from 'lucide-react'
 
 const features = [
   {
@@ -12,9 +12,21 @@ const features = [
   },
   {
     icon: Zap,
-    title: '6 Mutation Strategies',
-    desc: 'Hook Amplification, Angle Shift, Story Reframe, Counterpoint, Distillation, Platform Formatting.',
+    title: '7 Mutation Strategies',
+    desc: 'Hook Amplification, Angle Shift, Story Reframe, Counterpoint, Distillation, Platform Formatting, and Regional Adaptation.',
     color: 'from-cyan-500 to-blue-500',
+  },
+  {
+    icon: Globe,
+    title: 'Multi-Language Bharat',
+    desc: 'Evolve content in Hindi, Tamil, Telugu, Bengali, Marathi, Kannada, Gujarati, and English.',
+    color: 'from-orange-500 to-amber-500',
+  },
+  {
+    icon: Users,
+    title: 'Audience Simulation',
+    desc: 'AI-powered reactions from 5 Indian audience segments — Gen Z, Professionals, Rural Digital, Students, Business Owners.',
+    color: 'from-rose-500 to-pink-500',
   },
   {
     icon: Shield,
@@ -27,6 +39,18 @@ const features = [
     title: 'Evolution Trees',
     desc: 'Strategy-based sibling competition across generations. Visualize full content lineage.',
     color: 'from-amber-500 to-orange-500',
+  },
+  {
+    icon: ThumbsUp,
+    title: 'Feedback Loop',
+    desc: 'Rate evolutions with thumbs up/down. The system learns which strategies work best for you.',
+    color: 'from-violet-500 to-purple-500',
+  },
+  {
+    icon: Share2,
+    title: 'Share & Export',
+    desc: 'Copy evolved content instantly. Share via Twitter or native share. Export your evolution results.',
+    color: 'from-teal-500 to-cyan-500',
   },
 ]
 
@@ -51,7 +75,7 @@ export default function LandingPage() {
       >
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-dna-primary/10 border border-dna-primary/30 text-dna-primary text-sm mb-6">
           <Dna size={14} />
-          Evolutionary AI for Content
+          Evolutionary AI for Bharat 🇮🇳
         </div>
         <h1 className="text-5xl md:text-6xl font-extrabold leading-tight">
           <span className="bg-gradient-to-r from-dna-primary via-dna-secondary to-dna-accent bg-clip-text text-transparent">
@@ -60,7 +84,7 @@ export default function LandingPage() {
         </h1>
         <p className="mt-4 text-xl text-gray-400 max-w-2xl mx-auto">
           An evolutionary operating system that treats content like a living organism.
-          Mutate, score, select, and evolve — not just generate.
+          Mutate, score, select, and evolve — built for India's diverse audiences.
         </p>
         <div className="mt-8 flex items-center justify-center gap-4">
           <Link
@@ -129,7 +153,7 @@ export default function LandingPage() {
       <section className="text-center">
         <div className="bg-gradient-to-r from-dna-primary/10 to-dna-accent/10 rounded-2xl border border-dna-primary/20 p-10">
           <h2 className="text-2xl font-bold text-white mb-3">This is not content generation.</h2>
-          <p className="text-gray-400 mb-6">This is content <span className="text-dna-accent font-semibold">selection</span> through evolutionary pressure.</p>
+          <p className="text-gray-400 mb-6">This is content <span className="text-dna-accent font-semibold">selection</span> through evolutionary pressure — optimized for <span className="text-orange-400 font-semibold">Bharat</span>.</p>
           <Link
             to="/lab"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-dna-primary to-dna-accent text-white font-semibold hover:scale-105 transition-transform"

@@ -13,8 +13,8 @@ async function handleResponse(res) {
   return res.json()
 }
 
-export async function evolveContent(content, platform = 'general', strategy = null) {
-  const body = { content, platform }
+export async function evolveContent(content, platform = 'general', strategy = null, language = 'english') {
+  const body = { content, platform, language }
   if (strategy) body.strategy = strategy
 
   const res = await fetch(`${API_BASE}/evolve`, {
@@ -25,8 +25,8 @@ export async function evolveContent(content, platform = 'general', strategy = nu
   return handleResponse(res)
 }
 
-export async function evolveInLab(content, platform = 'general', generations = 3, strategies = null) {
-  const body = { content, platform, generations }
+export async function evolveInLab(content, platform = 'general', generations = 3, strategies = null, language = 'english') {
+  const body = { content, platform, generations, language }
   if (strategies) body.strategies = strategies
 
   const res = await fetch(`${API_BASE}/evolve/lab`, {
@@ -52,6 +52,34 @@ export async function scoreFitness(content) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ content }),
   })
+  return handleResponse(res)
+}
+
+export async function simulateAudience(content, platform = 'general') {
+  const res = await fetch(`${API_BASE}/audience/simulate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content, platform }),
+  })
+  return handleResponse(res)
+}
+
+export async function submitFeedback(contentId, mutationId, strategy, rating) {
+  const res = await fetch(`${API_BASE}/feedback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      content_id: contentId,
+      mutation_id: mutationId,
+      strategy,
+      rating,
+    }),
+  })
+  return handleResponse(res)
+}
+
+export async function getSharedEvolution(contentId) {
+  const res = await fetch(`${API_BASE}/share/${encodeURIComponent(contentId)}`)
   return handleResponse(res)
 }
 

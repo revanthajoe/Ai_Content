@@ -20,6 +20,18 @@ class MutationStrategy(str, Enum):
     COUNTERPOINT_INJECTION = "counterpoint_injection"
     SUMMARY_DISTILLATION = "summary_distillation"
     PLATFORM_FORMATTING = "platform_formatting"
+    REGIONAL_ADAPTATION = "regional_adaptation"
+
+
+class LanguageType(str, Enum):
+    ENGLISH = "english"
+    HINDI = "hindi"
+    TAMIL = "tamil"
+    TELUGU = "telugu"
+    BENGALI = "bengali"
+    MARATHI = "marathi"
+    KANNADA = "kannada"
+    GUJARATI = "gujarati"
 
 
 class IntentType(str, Enum):
@@ -162,6 +174,7 @@ class CreateRequest(BaseModel):
     content: str = Field(..., min_length=10, max_length=10000)
     platform: PlatformType = PlatformType.GENERAL
     strategy: Optional[MutationStrategy] = None
+    language: LanguageType = LanguageType.ENGLISH
 
 
 class CreateResponse(BaseModel):
@@ -180,6 +193,21 @@ class EvolutionLabRequest(BaseModel):
     platform: PlatformType = PlatformType.GENERAL
     generations: int = Field(default=3, ge=1, le=10)
     strategies: Optional[list[MutationStrategy]] = None
+    language: LanguageType = LanguageType.ENGLISH
+
+
+class AudienceSimRequest(BaseModel):
+    """Request for audience reaction simulation."""
+    content: str = Field(..., min_length=10, max_length=10000)
+    platform: PlatformType = PlatformType.GENERAL
+
+
+class FeedbackRequest(BaseModel):
+    """Request to submit feedback on a mutation."""
+    content_id: str
+    mutation_id: str
+    strategy: MutationStrategy
+    rating: int = Field(..., ge=-1, le=1)  # -1=down, 0=neutral, 1=up
 
 
 class EvolutionLabResponse(BaseModel):

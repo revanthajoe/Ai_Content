@@ -20,6 +20,7 @@ from .models import (
     CreateResponse,
     EvolutionLabResponse,
     PlatformType,
+    LanguageType,
 )
 from .dna_extractor import DNAExtractor
 from .mutation_engine import MutationEngine
@@ -68,6 +69,7 @@ class EvolutionManager:
         content: str,
         platform: PlatformType = PlatformType.GENERAL,
         strategy: MutationStrategy | None = None,
+        language: LanguageType = LanguageType.ENGLISH,
     ) -> CreateResponse:
         """
         Perform a single evolution step:
@@ -89,7 +91,7 @@ class EvolutionManager:
             strategy = random.choice(self.mutation_engine.available_strategies())
 
         # Mutate
-        mutated_content = self.mutation_engine.mutate(content, strategy, platform=platform.value)
+        mutated_content = self.mutation_engine.mutate(content, strategy, platform=platform.value, language=language.value)
 
         # Check similarity
         accepted, similarity, reason = self.similarity_guard.check(mutated_content, content)
@@ -147,6 +149,7 @@ class EvolutionManager:
         platform: PlatformType = PlatformType.GENERAL,
         generations: int = 3,
         strategies: list[MutationStrategy] | None = None,
+        language: LanguageType = LanguageType.ENGLISH,
     ) -> EvolutionLabResponse:
         """
         Run multi-generation evolution:
@@ -200,7 +203,7 @@ class EvolutionManager:
 
             for strategy in available:
                 mutation_result = self._attempt_mutation(
-                    current_content, strategy, gen, current_parent.id, platform
+                    current_content, strategy, gen, current_parent.id, platform, language
                 )
                 total_mutations += 1
 
@@ -325,9 +328,10 @@ class EvolutionManager:
         generation: int,
         parent_id: str,
         platform: PlatformType = PlatformType.GENERAL,
+        language: LanguageType = LanguageType.ENGLISH,
     ) -> MutationResult:
         """Attempt a single mutation with similarity checking."""
-        mutated_content = self.mutation_engine.mutate(content, strategy, platform=platform.value)
+        mutated_content = self.mutation_engine.mutate(content, strategy, platform=platform.value, language=language.value)
 
         # Similarity check
         accepted, similarity, reason = self.similarity_guard.check(mutated_content, content)

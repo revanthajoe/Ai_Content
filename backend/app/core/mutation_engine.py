@@ -34,7 +34,7 @@ class MutationEngine:
             logger.warning(f"MutationEngine: Could not init Bedrock: {e}")
             self._bedrock = None
 
-    def mutate(self, content: str, strategy: MutationStrategy, platform: str = "general") -> str:
+    def mutate(self, content: str, strategy: MutationStrategy, platform: str = "general", language: str = "english") -> str:
         """Apply a mutation strategy. Tries Bedrock first, falls back to templates."""
         # Try AI-powered mutation via Bedrock
         if self._bedrock and self._bedrock.available:
@@ -42,6 +42,7 @@ class MutationEngine:
                 content=content,
                 strategy=strategy.value,
                 platform=platform,
+                language=language,
             )
             if ai_result and len(ai_result.strip()) > 20:
                 logger.info(f"Bedrock mutation succeeded for strategy={strategy.value}")
@@ -60,6 +61,7 @@ class MutationEngine:
             MutationStrategy.COUNTERPOINT_INJECTION: self._counterpoint_injection,
             MutationStrategy.SUMMARY_DISTILLATION: self._summary_distillation,
             MutationStrategy.PLATFORM_FORMATTING: self._platform_formatting,
+            MutationStrategy.REGIONAL_ADAPTATION: self._regional_adaptation,
         }
         handler = handlers.get(strategy)
         if handler is None:
@@ -225,6 +227,32 @@ class MutationEngine:
             formatted_parts.append(f"{emoji} {sentence}")
 
         return "\n\n".join(formatted_parts) + "\n\n👉 Save this. Share this. Apply this."
+
+    def _regional_adaptation(self, content: str) -> str:
+        """
+        Adapt content for Indian audiences using culturally relevant framing.
+        Rule-based fallback when Bedrock is unavailable.
+        """
+        sentences = self._split_sentences(content)
+        if not sentences:
+            return content
+
+        # Add Indian-context wrapper
+        openers = [
+            "🇮🇳 From Kanyakumari to Kashmir, this resonates:",
+            "🪷 Here's what this means for Bharat:",
+            "🇮🇳 An Indian perspective on this:",
+            "🪷 Through the lens of India's digital revolution:",
+        ]
+        closers = [
+            "\n\n🙏 Jai Hind. Share this with someone who needs to hear it.",
+            "\n\n🇮🇳 This is the India story. And it's just getting started.",
+            "\n\n🪷 From India, for the world. Share your thoughts below.",
+            "\n\n🙏 India is watching, learning, and leading. What's your take?",
+        ]
+
+        body = " ".join(sentences)
+        return f"{random.choice(openers)}\n\n{body}{random.choice(closers)}"
 
     # ── Utilities ─────────────────────────────────────────────────────────────
 

@@ -1,31 +1,72 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FlaskConical, Play, Trophy, GitBranch, XCircle, AlertCircle, ChevronDown } from 'lucide-react'
-import { evolveInLab } from '../api/client'
+import { FlaskConical, Play, Trophy, GitBranch, XCircle, AlertCircle, ChevronDown, Copy, Check, ThumbsUp, ThumbsDown, Share2, Globe, Loader2 } from 'lucide-react'
+import { evolveInLab, submitFeedback, simulateAudience } from '../api/client'
 import EvolutionTree from './EvolutionTree'
 import FitnessChart from './FitnessChart'
 import DNACard from './DNACard'
 import DNADrift from './DNADrift'
+import StepProgress from './StepProgress'
+import AudiencePanel from './AudiencePanel'
+
+const LANGUAGES = [
+  { value: 'english', label: 'English' },
+  { value: 'hindi', label: 'Hindi' },
+  { value: 'tamil', label: 'Tamil' },
+  { value: 'telugu', label: 'Telugu' },
+  { value: 'bengali', label: 'Bengali' },
+  { value: 'marathi', label: 'Marathi' },
+  { value: 'kannada', label: 'Kannada' },
+  { value: 'gujarati', label: 'Gujarati' },
+]
+
+const LAB_STEPS = [
+  'Seeding DNA',
+  'Running Generations',
+  'Scoring Fitness',
+  'Selecting Winners',
+  'Building Tree',
+]
 
 export default function EvolutionLab() {
   const [content, setContent] = useState('')
   const [platform, setPlatform] = useState('general')
+  const [language, setLanguage] = useState('english')
   const [generations, setGenerations] = useState(3)
   const [loading, setLoading] = useState(false)
+  const [currentStep, setCurrentStep] = useState(-1)
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
   const [selectedNode, setSelectedNode] = useState(null)
+  const [copied, setCopied] = useState(null)
+  const [feedback, setFeedback] = useState(null)
+  const [audienceData, setAudienceData] = useState(null)
+  const [audienceLoading, setAudienceLoading] = useState(false)
+
+  const handleCopy = useCallback(async (text, which) => {
+    await navigator.clipboard.writeText(text)
+    setCopied(which)
+    setTimeout(() => setCopied(null), 2000)
+  }, [])
 
   const handleEvolve = async () => {
     if (content.length < 10) return
     setLoading(true)
     setError(null)
     setSelectedNode(null)
+    setFeedback(null)
+    setAudienceData(null)
     try {
-      const data = await evolveInLab(content, platform, generations)
+      for (let i = 0; i < LAB_STEPS.length; i++) {
+        setCurrentStep(i)
+        await new Promise(r => setTimeout(r, 500 + Math.random() * 400))
+      }
+      const data = await evolveInLab(content, platform, generations, null, language)
       setResult(data)
+      setCurrentStep(-1)
     } catch (err) {
       setError(err.message)
+      setCurrentStep(-1)
     } finally {
       setLoading(false)
     }
@@ -60,7 +101,7 @@ export default function EvolutionLab() {
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">Platform</label>
             <select
@@ -70,6 +111,20 @@ export default function EvolutionLab() {
             >
               {['general','twitter','linkedin','instagram','blog','email','youtube'].map(p => (
                 <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-1">
+              <Globe size={14} /> Language
+            </label>
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              className="w-full bg-dna-dark rounded-xl border border-dna-surfaceLight/40 p-3 text-white focus:outline-none focus:border-dna-accent/60"
+            >
+              {LANGUAGES.map(l => (
+                <option key={l.value} value={l.value}>{l.label}</option>
               ))}
             </select>
           </div>
@@ -98,7 +153,7 @@ export default function EvolutionLab() {
         >
           {loading ? (
             <>
-              <div className="animate-spin w-5 h-5 border-2 border-dna-dark/30 border-t-dna-dark rounded-full" />
+              <Loader2 size={18} className="animate-spin" />
               Running Evolution...
             </>
           ) : (
@@ -109,6 +164,8 @@ export default function EvolutionLab() {
           )}
         </button>
       </div>
+
+      {loading && currentStep >= 0 && <StepProgress steps={LAB_STEPS} currentStep={currentStep} />}
 
       {error && (
         <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center gap-3 text-red-400">
@@ -141,15 +198,50 @@ export default function EvolutionLab() {
 
             {/* Winner */}
             <div className="bg-gradient-to-r from-dna-success/10 to-emerald-500/5 rounded-2xl border border-dna-success/30 p-6 glow-border-success">
-              <h3 className="text-lg font-semibold text-dna-success flex items-center gap-2 mb-3">
-                <Trophy size={20} />
-                Evolutionary Winner
-              </h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-semibold text-dna-success flex items-center gap-2">
+                  <Trophy size={20} />
+                  Evolutionary Winner
+                </h3>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => handleCopy(result.winner.content, 'winner')} className="text-gray-500 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/5" title="Copy">
+                    {copied === 'winner' ? <Check size={16} className="text-dna-success" /> : <Copy size={16} />}
+                  </button>
+                  <button onClick={() => {
+                    const text = `Evolved with Content DNA OS!\n\n${result.winner.content.substring(0, 200)}...`
+                    const url = window.location.origin
+                    if (navigator.share) navigator.share({ title: 'Content DNA OS', text, url }).catch(() => {})
+                    else window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank', 'noopener,noreferrer')
+                  }} className="text-gray-500 hover:text-dna-accent transition-colors p-1.5 rounded-lg hover:bg-white/5" title="Share">
+                    <Share2 size={16} />
+                  </button>
+                </div>
+              </div>
               <div className="text-xs text-gray-400 mb-2">
                 Strategy: <span className="text-dna-accent capitalize">{result.winner.strategy?.replace(/_/g, ' ')}</span> | 
                 Fitness: <span className="text-dna-success font-bold">{(result.winner.fitness.total * 100).toFixed(1)}%</span>
               </div>
               <p className="text-white whitespace-pre-wrap text-sm">{result.winner.content}</p>
+              <div className="mt-4 pt-3 border-t border-dna-success/20 flex items-center gap-3">
+                <span className="text-xs text-gray-500">Rate this evolution:</span>
+                <button onClick={() => { setFeedback(1); submitFeedback('lab', 'winner', result.winner.strategy, 1).catch(() => {}) }} className={`p-1.5 rounded-lg transition-all ${feedback === 1 ? 'bg-dna-success/20 text-dna-success' : 'text-gray-500 hover:text-dna-success hover:bg-dna-success/10'}`}><ThumbsUp size={16} /></button>
+                <button onClick={() => { setFeedback(-1); submitFeedback('lab', 'winner', result.winner.strategy, -1).catch(() => {}) }} className={`p-1.5 rounded-lg transition-all ${feedback === -1 ? 'bg-red-500/20 text-red-400' : 'text-gray-500 hover:text-red-400 hover:bg-red-500/10'}`}><ThumbsDown size={16} /></button>
+                {feedback !== null && <span className="text-xs text-dna-accent">Recorded!</span>}
+              </div>
+            </div>
+
+            {/* Audience Simulation */}
+            <div className="bg-dna-surface/50 rounded-2xl border border-dna-surfaceLight/30 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-white">🎯 Audience Simulation</h3>
+                <button onClick={async () => { setAudienceLoading(true); try { setAudienceData(await simulateAudience(result.winner.content, platform)) } catch {} setAudienceLoading(false) }} disabled={audienceLoading} className="px-4 py-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-medium hover:scale-105 transition-transform disabled:opacity-50 flex items-center gap-2">
+                  {audienceLoading ? <Loader2 size={14} className="animate-spin" /> : <Trophy size={14} />}
+                  Simulate Reactions
+                </button>
+              </div>
+              {audienceData ? <AudiencePanel data={audienceData} /> : (
+                <p className="text-gray-500 text-sm">Click "Simulate Reactions" to see how Indian audience segments would react to the winner.</p>
+              )}
             </div>
 
             {/* Fitness Chart */}

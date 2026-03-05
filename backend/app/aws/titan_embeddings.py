@@ -6,9 +6,10 @@ Used for enhanced similarity checking beyond SequenceMatcher.
 from __future__ import annotations
 import json
 import math
-import os
 import logging
 from typing import Optional
+
+from app.aws.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,7 @@ class TitanEmbeddingsClient:
     Falls back to None when AWS is not configured.
     """
 
-    MODEL_ID = "amazon.titan-embed-text-v1"
+    MODEL_ID = settings.titan_model
 
     def __init__(self):
         self._client = None
@@ -33,7 +34,7 @@ class TitanEmbeddingsClient:
             import boto3
             self._client = boto3.client(
                 "bedrock-runtime",
-                region_name=os.getenv("AWS_REGION", "us-east-1"),
+                region_name=settings.aws_region,
             )
             self._available = True
         except Exception:

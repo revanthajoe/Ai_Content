@@ -4,6 +4,8 @@ Main entry point for the backend API.
 Also serves as Lambda handler via Mangum.
 """
 
+import app.aws.config  # noqa: F401  — load .env before anything else
+
 import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

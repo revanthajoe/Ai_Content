@@ -40,7 +40,10 @@ Resources:
             - Effect: Allow
               Action:
                 - bedrock:InvokeModel
-              Resource: '*'
+              Resource:
+                - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/us.amazon.nova-pro-v1:0'
+                - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/us.amazon.nova-lite-v1:0'
+                - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.titan-embed-text-v1'
       Events:
         Root:
           Type: Api
@@ -101,6 +104,36 @@ Resources:
           Properties:
             RestApiId: !Ref ContentDNAApi
             Path: /health/aws
+            Method: GET
+        AudienceSimulate:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ContentDNAApi
+            Path: /api/audience/simulate
+            Method: POST
+        Feedback:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ContentDNAApi
+            Path: /api/feedback
+            Method: POST
+        FeedbackWeights:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ContentDNAApi
+            Path: /api/feedback/weights
+            Method: GET
+        ShareEvolution:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ContentDNAApi
+            Path: /api/share/{content_id}
+            Method: GET
+        Languages:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ContentDNAApi
+            Path: /api/languages
             Method: GET
 
   # ──── DynamoDB Table ───────────────────────────────────────────────────────

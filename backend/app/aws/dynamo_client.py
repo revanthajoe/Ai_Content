@@ -5,10 +5,11 @@ Table: content_dna_evolution (content_id: String PK, generation: Number SK)
 
 from __future__ import annotations
 import json
-import os
 import logging
 from typing import Optional
 from datetime import datetime, timezone
+
+from app.aws.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,7 @@ class DynamoClient:
     Falls back to in-memory storage when DynamoDB is not available.
     """
 
-    TABLE_NAME = os.getenv("DYNAMO_TABLE", "content_dna_evolution")
+    TABLE_NAME = settings.dynamo_table
 
     def __init__(self):
         self._client = None
@@ -35,7 +36,7 @@ class DynamoClient:
             import boto3
             self._client = boto3.resource(
                 "dynamodb",
-                region_name=os.getenv("AWS_REGION", "us-east-1"),
+                region_name=settings.aws_region,
             )
             self._table = self._client.Table(self.TABLE_NAME)
             self._available = True
