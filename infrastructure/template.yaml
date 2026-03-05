@@ -90,22 +90,34 @@ Resources:
             RestApiId: !Ref ContentDNAApi
             Path: /api/fitness/score
             Method: POST
+        Evolutions:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ContentDNAApi
+            Path: /api/evolutions
+            Method: GET
+        HealthAws:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ContentDNAApi
+            Path: /health/aws
+            Method: GET
 
   # ──── DynamoDB Table ───────────────────────────────────────────────────────
   ContentDNATable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: ContentDNA
+      TableName: content_dna_evolution
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
-        - AttributeName: PK
+        - AttributeName: content_id
           AttributeType: S
-        - AttributeName: SK
-          AttributeType: S
+        - AttributeName: generation
+          AttributeType: N
       KeySchema:
-        - AttributeName: PK
+        - AttributeName: content_id
           KeyType: HASH
-        - AttributeName: SK
+        - AttributeName: generation
           KeyType: RANGE
       Tags:
         - Key: Project

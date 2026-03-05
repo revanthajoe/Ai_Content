@@ -1,25 +1,30 @@
 """
 Similarity Guard – Anti-repetition enforcement layer.
-Uses SequenceMatcher for text similarity and tracks used content
-to prevent degenerative evolution.
+Uses Amazon Titan Embeddings for semantic similarity when available,
+falls back to SequenceMatcher for text similarity.
+Tracks used content to prevent degenerative evolution.
 """
 
 from __future__ import annotations
 import re
+import logging
 from difflib import SequenceMatcher
 from .models import MutationStrategy
+
+logger = logging.getLogger(__name__)
 
 
 class SimilarityGuard:
     """
     Prevents repetitive mutations by:
-    - Measuring text similarity against parent and siblings
+    - Measuring semantic similarity via Titan Embeddings (with SequenceMatcher fallback)
     - Tracking used text fragments across generations
     - Preventing strategy reuse within the same evolution
     - Cleaning content to prevent superficial variation gaming
     """
 
-    DEFAULT_THRESHOLD = 0.65  # Reject if similarity > this
+    DEFAULT_THRESHOLD = 0.65  # Reject if similarity > this (SequenceMatcher)
+    SEMANTIC_THRESHOLD = 0.85  # Reject if cosine similarity > this (Titan)
 
     def __init__(self, threshold: float = DEFAULT_THRESHOLD):
         self.threshold = threshold
@@ -27,6 +32,18 @@ class SimilarityGuard:
         self._used_strategies: list[MutationStrategy] = []
         self._used_hooks: set[str] = set()
         self._used_ctas: set[str] = set()
+        self._titan = None
+        try:
+            from ..aws.titan_embeddings import TitanEmbeddingsClient
+            self._titan = TitanEmbeddingsClient()
+            if self._titan.available:
+                logger.info("SimilarityGuard: Titan Embeddings available — semantic similarity enabled")
+            else:
+                logger.info("SimilarityGuard: Titan unavailable — using SequenceMatcher fallback")
+                self._titan = None
+        except Exception as e:
+            logger.warning(f"SimilarityGuard: Could not init Titan: {e}")
+            self._titan = None
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -101,11 +118,21 @@ class SimilarityGuard:
 
     # ── Similarity Computation ────────────────────────────────────────────────
 
-    @staticmethod
-    def _compute_similarity(text_a: str, text_b: str) -> float:
-        """Compute similarity ratio using SequenceMatcher."""
+    def _compute_similarity(self, text_a: str, text_b: str) -> float:
+        """Compute similarity using Titan Embeddings (semantic) or SequenceMatcher (fallback)."""
         if not text_a or not text_b:
             return 0.0
+
+        # Try semantic similarity via Titan Embeddings
+        if self._titan and self._titan.available:
+            semantic_sim = self._titan.compute_similarity(text_a, text_b)
+            if semantic_sim is not None:
+                # Map semantic threshold to the guard's threshold range
+                # Titan cosine similarity > 0.85 ≈ SequenceMatcher > 0.65
+                mapped = semantic_sim * (self.threshold / self.SEMANTIC_THRESHOLD)
+                return min(1.0, mapped)
+
+        # Fallback: SequenceMatcher
         return SequenceMatcher(None, text_a, text_b).ratio()
 
     # ── Content Cleaning ──────────────────────────────────────────────────────

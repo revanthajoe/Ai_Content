@@ -7,7 +7,10 @@ from __future__ import annotations
 import json
 import math
 import os
+import logging
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 class TitanEmbeddingsClient:
@@ -55,7 +58,7 @@ class TitanEmbeddingsClient:
             result = json.loads(response["body"].read())
             return result.get("embedding")
         except Exception as e:
-            print(f"Titan embedding failed: {e}")
+            logger.error(f"Titan embedding failed: {e}")
             return None
 
     def compute_similarity(self, text_a: str, text_b: str) -> Optional[float]:

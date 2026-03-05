@@ -1,9 +1,10 @@
 """
 API Routes for Content DNA OS.
 Provides endpoints for single evolution, multi-generation lab,
-DNA extraction, and fitness scoring.
+DNA extraction, fitness scoring, and evolution history.
 """
 
+import logging
 from fastapi import APIRouter, HTTPException
 from ..core.models import (
     CreateRequest,
@@ -19,6 +20,8 @@ from ..core.models import (
 from ..core.evolution_manager import EvolutionManager
 from ..core.dna_extractor import DNAExtractor
 from ..core.fitness_scorer import FitnessScorer
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -44,7 +47,8 @@ def evolve_single(request: CreateRequest):
         )
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("evolve_single failed")
+        raise HTTPException(status_code=500, detail="Evolution failed. Please try again.")
 
 
 # ── Evolution Lab (Multi-Generation) ─────────────────────────────────────────
@@ -64,7 +68,8 @@ def evolve_lab(request: EvolutionLabRequest):
         )
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("evolve_lab failed")
+        raise HTTPException(status_code=500, detail="Evolution lab failed. Please try again.")
 
 
 # ── DNA Extraction ────────────────────────────────────────────────────────────
@@ -82,6 +87,16 @@ def score_fitness(request: ContentRequest):
     """Compute the fitness score for a content piece."""
     dna = _dna_extractor.extract(request.content)
     return _fitness_scorer.score(request.content, dna)
+
+
+# ── Evolution History ─────────────────────────────────────────────────────────
+
+@router.get("/evolutions")
+def list_evolutions():
+    """List recent evolution runs (from DynamoDB if available)."""
+    if _evolution_manager._dynamo:
+        return _evolution_manager._dynamo.list_evolutions(limit=20)
+    return []
 
 
 # ── Meta ──────────────────────────────────────────────────────────────────────

@@ -1,25 +1,32 @@
 """
-Amazon Bedrock Client – Integration with Claude 3 Sonnet via Amazon Bedrock.
+Amazon Bedrock Client – Integration with Amazon Nova Pro via Amazon Bedrock.
 Provides AI-powered mutation generation as an enhancement over rule-based mutations.
+Uses Amazon Nova Pro (primary) and Nova Lite (fallback) — no marketplace subscription needed.
 """
 
 from __future__ import annotations
 import json
 import os
+import logging
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 class BedrockClient:
     """
-    Wrapper for Amazon Bedrock Claude 3 Sonnet.
-    Falls back gracefully when AWS credentials are not available.
+    Wrapper for Amazon Bedrock foundation models.
+    Uses Amazon Nova Pro for high-quality content mutations.
+    Falls back to Nova Lite, then gracefully to None when unavailable.
     """
 
-    MODEL_ID = "anthropic.claude-3-sonnet-20240229-v1:0"
+    PRIMARY_MODEL = "us.amazon.nova-pro-v1:0"
+    FALLBACK_MODEL = "us.amazon.nova-lite-v1:0"
 
     def __init__(self):
         self._client = None
         self._available = False
+        self._active_model = self.PRIMARY_MODEL
         self._init_client()
 
     def _init_client(self):
@@ -46,7 +53,8 @@ class BedrockClient:
         max_tokens: int = 1024,
     ) -> Optional[str]:
         """
-        Generate a content mutation using Claude 3 via Bedrock.
+        Generate a content mutation using Amazon Nova via Bedrock.
+        Tries Nova Pro first, falls back to Nova Lite.
         Returns None if Bedrock is not available.
         """
         if not self._available or not self._client:
@@ -54,27 +62,41 @@ class BedrockClient:
 
         prompt = self._build_mutation_prompt(content, strategy, platform)
 
+        # Try primary model, then fallback
+        for model_id in [self._active_model, self.FALLBACK_MODEL]:
+            result = self._invoke_nova(model_id, prompt, max_tokens)
+            if result:
+                self._active_model = model_id
+                return result
+
+        return None
+
+    def _invoke_nova(self, model_id: str, prompt: str, max_tokens: int) -> Optional[str]:
+        """Invoke an Amazon Nova model."""
         try:
             response = self._client.invoke_model(
-                modelId=self.MODEL_ID,
+                modelId=model_id,
                 contentType="application/json",
                 accept="application/json",
                 body=json.dumps({
-                    "anthropic_version": "bedrock-2023-05-31",
-                    "max_tokens": max_tokens,
-                    "temperature": 0.8,
                     "messages": [
                         {
                             "role": "user",
-                            "content": prompt,
+                            "content": [{"text": prompt}],
                         }
                     ],
+                    "inferenceConfig": {
+                        "maxTokens": max_tokens,
+                        "temperature": 0.8,
+                        "topP": 0.9,
+                    },
                 }),
             )
             result = json.loads(response["body"].read())
-            return result["content"][0]["text"]
+            text = result["output"]["message"]["content"][0]["text"]
+            return text
         except Exception as e:
-            print(f"Bedrock mutation generation failed: {e}")
+            logger.error(f"Bedrock {model_id} failed: {e}")
             return None
 
     @staticmethod

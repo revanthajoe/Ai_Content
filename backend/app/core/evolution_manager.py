@@ -1,11 +1,13 @@
 """
 Evolution Manager – Orchestrates the full evolutionary pipeline.
 Coordinates DNA extraction, mutation, fitness scoring, similarity checking,
-and evolution tree construction.
+evolution tree construction, and DynamoDB persistence.
 """
 
 from __future__ import annotations
 import random
+import hashlib
+import logging
 from .models import (
     MutationStrategy,
     MutationResult,
@@ -24,11 +26,19 @@ from .mutation_engine import MutationEngine
 from .fitness_scorer import FitnessScorer
 from .similarity_guard import SimilarityGuard
 
+logger = logging.getLogger(__name__)
+
+
+def _content_id(content: str) -> str:
+    """Generate a short deterministic ID from content."""
+    return hashlib.sha256(content.encode()).hexdigest()[:12]
+
 
 class EvolutionManager:
     """
     Top-level orchestrator for the Content DNA OS.
     Manages single-step evolution (Create) and multi-generation evolution (Lab).
+    Persists results to DynamoDB when available.
     """
 
     MAX_RETRY_PER_STRATEGY = 3
@@ -38,6 +48,18 @@ class EvolutionManager:
         self.mutation_engine = MutationEngine()
         self.fitness_scorer = FitnessScorer()
         self.similarity_guard = SimilarityGuard()
+        self._dynamo = None
+        try:
+            from ..aws.dynamo_client import DynamoClient
+            self._dynamo = DynamoClient()
+            if not self._dynamo.available:
+                logger.info("EvolutionManager: DynamoDB unavailable — results will not persist")
+                self._dynamo = None
+            else:
+                logger.info("EvolutionManager: DynamoDB connected — persistence enabled")
+        except Exception as e:
+            logger.warning(f"EvolutionManager: Could not init DynamoDB: {e}")
+            self._dynamo = None
 
     # ── Single Evolution (Create Page) ────────────────────────────────────────
 
@@ -67,7 +89,7 @@ class EvolutionManager:
             strategy = random.choice(self.mutation_engine.available_strategies())
 
         # Mutate
-        mutated_content = self.mutation_engine.mutate(content, strategy)
+        mutated_content = self.mutation_engine.mutate(content, strategy, platform=platform.value)
 
         # Check similarity
         accepted, similarity, reason = self.similarity_guard.check(mutated_content, content)
@@ -103,7 +125,7 @@ class EvolutionManager:
             original_fitness.total, evolved_fitness.total
         )
 
-        return CreateResponse(
+        result = CreateResponse(
             original=content,
             evolved=mutation,
             dna_original=dna_original,
@@ -111,6 +133,11 @@ class EvolutionManager:
             fitness_delta=delta,
             dna_drift=drift,
         )
+
+        # Persist to DynamoDB
+        self._persist_single(content, result)
+
+        return result
 
     # ── Multi-Generation Evolution (Evolution Lab) ────────────────────────────
 
@@ -173,7 +200,7 @@ class EvolutionManager:
 
             for strategy in available:
                 mutation_result = self._attempt_mutation(
-                    current_content, strategy, gen, current_parent.id
+                    current_content, strategy, gen, current_parent.id, platform
                 )
                 total_mutations += 1
 
@@ -239,13 +266,55 @@ class EvolutionManager:
             winning_strategy=winner.strategy if winner else None,
         )
 
-        return EvolutionLabResponse(
+        result = EvolutionLabResponse(
             tree=tree,
             winner=winner or root,
             all_mutations=all_mutations,
             rejected_mutations=rejected_mutations,
             generation_fitness=generation_fitness,
         )
+
+        # Persist to DynamoDB
+        self._persist_evolution(content, result)
+
+        return result
+
+    def _persist_evolution(self, content: str, response: EvolutionLabResponse):
+        """Persist evolution results to DynamoDB (fire-and-forget)."""
+        if not self._dynamo:
+            return
+        try:
+            cid = _content_id(content)
+            # Store full tree
+            self._dynamo.store_full_evolution(cid, response.tree.model_dump())
+            # Store original DNA
+            self._dynamo.store_dna(cid, response.tree.root.dna.model_dump())
+            # Store per-generation fitness
+            for gf in response.generation_fitness:
+                gen = gf.get("generation", 0)
+                self._dynamo.store_fitness(cid, gen, gf)
+            # Store each accepted mutation as a generation record
+            for mut in response.all_mutations:
+                self._dynamo.store_evolution(cid, int(mut.id[:8], 16) % 10000, mut.model_dump())
+            logger.info(f"Persisted evolution {cid} to DynamoDB")
+        except Exception as e:
+            logger.error(f"Failed to persist evolution to DynamoDB: {e}")
+
+    def _persist_single(self, content: str, response: CreateResponse):
+        """Persist single evolution result to DynamoDB."""
+        if not self._dynamo:
+            return
+        try:
+            cid = _content_id(content)
+            self._dynamo.store_dna(cid, response.dna_original.model_dump())
+            self._dynamo.store_evolution(cid, 0, {
+                "original": content,
+                "evolved": response.evolved.model_dump(),
+                "fitness_delta": response.fitness_delta.model_dump(),
+            })
+            logger.info(f"Persisted single evolution {cid} to DynamoDB")
+        except Exception as e:
+            logger.error(f"Failed to persist single evolution to DynamoDB: {e}")
 
     # ── Internal Helpers ──────────────────────────────────────────────────────
 
@@ -255,9 +324,10 @@ class EvolutionManager:
         strategy: MutationStrategy,
         generation: int,
         parent_id: str,
+        platform: PlatformType = PlatformType.GENERAL,
     ) -> MutationResult:
         """Attempt a single mutation with similarity checking."""
-        mutated_content = self.mutation_engine.mutate(content, strategy)
+        mutated_content = self.mutation_engine.mutate(content, strategy, platform=platform.value)
 
         # Similarity check
         accepted, similarity, reason = self.similarity_guard.check(mutated_content, content)

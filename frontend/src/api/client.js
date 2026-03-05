@@ -1,4 +1,5 @@
-const API_BASE = '/api'
+// Use environment variable for API Gateway, fallback to relative /api for local/nginx
+const API_BASE = import.meta.env.VITE_API_BASE || '/api'
 
 async function handleResponse(res) {
   if (!res.ok) {
@@ -61,5 +62,10 @@ export async function getStrategies() {
 
 export async function getPlatforms() {
   const res = await fetch(`${API_BASE}/platforms`)
+  return handleResponse(res)
+}
+
+export async function getEvolutionHistory() {
+  const res = await fetch(`${API_BASE}/evolutions`)
   return handleResponse(res)
 }

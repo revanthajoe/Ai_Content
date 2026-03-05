@@ -1,22 +1,58 @@
 """
 Mutation Engine – Applies structural transformation strategies to content.
 Each strategy produces a meaningfully different variant, not just a paraphrase.
+Uses Amazon Bedrock (Claude 3) when available, with rule-based fallback.
 """
 
 from __future__ import annotations
 import re
 import random
+import logging
 from .models import MutationStrategy
+
+logger = logging.getLogger(__name__)
 
 
 class MutationEngine:
     """
     Generates content mutations using six distinct strategies.
-    Each strategy transforms the content structurally, not cosmetically.
+    Uses Claude 3 via Amazon Bedrock for AI-powered mutations.
+    Falls back to rule-based templates when Bedrock is unavailable.
     """
 
-    def mutate(self, content: str, strategy: MutationStrategy) -> str:
-        """Apply a mutation strategy and return the transformed content."""
+    def __init__(self):
+        self._bedrock = None
+        try:
+            from ..aws.bedrock_client import BedrockClient
+            self._bedrock = BedrockClient()
+            if self._bedrock.available:
+                logger.info("MutationEngine: Bedrock (Claude 3) available — AI mutations enabled")
+            else:
+                logger.info("MutationEngine: Bedrock unavailable — using rule-based fallback")
+                self._bedrock = None
+        except Exception as e:
+            logger.warning(f"MutationEngine: Could not init Bedrock: {e}")
+            self._bedrock = None
+
+    def mutate(self, content: str, strategy: MutationStrategy, platform: str = "general") -> str:
+        """Apply a mutation strategy. Tries Bedrock first, falls back to templates."""
+        # Try AI-powered mutation via Bedrock
+        if self._bedrock and self._bedrock.available:
+            ai_result = self._bedrock.generate_mutation(
+                content=content,
+                strategy=strategy.value,
+                platform=platform,
+            )
+            if ai_result and len(ai_result.strip()) > 20:
+                logger.info(f"Bedrock mutation succeeded for strategy={strategy.value}")
+                return ai_result.strip()
+            logger.warning(f"Bedrock returned empty/short result for {strategy.value}, using fallback")
+
+        # Fallback: rule-based mutation
+        return self._mutate_rule_based(content, strategy)
+
+    def _mutate_rule_based(self, content: str, strategy: MutationStrategy) -> str:
+        """Rule-based fallback mutation."""
         handlers = {
             MutationStrategy.HOOK_AMPLIFICATION: self._hook_amplification,
             MutationStrategy.ANGLE_SHIFT: self._angle_shift,
