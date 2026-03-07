@@ -22,7 +22,7 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# CORS — allow frontend dev server and API Gateway origins
+# CORS — allow frontend dev server, CloudFront, API Gateway, and browser extension origins
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -30,6 +30,7 @@ app.add_middleware(
         "http://localhost:5173",
         "http://localhost:8080",
     ],
+    allow_origin_regex=r"^(https://.*\.cloudfront\.net|chrome-extension://.*|moz-extension://.*|safari-extension://.*)$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

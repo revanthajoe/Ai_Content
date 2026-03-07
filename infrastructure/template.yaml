@@ -6,7 +6,7 @@ Globals:
   Function:
     Timeout: 30
     MemorySize: 512
-    Runtime: python3.12
+    Runtime: python3.11
     Architectures:
       - x86_64
     Environment:
@@ -29,9 +29,8 @@ Resources:
   ContentDNAFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: content-dna-os
       Handler: lambda_handler.handler
-      CodeUri: backend/
+      CodeUri: ../backend/
       Description: Content DNA OS mutation engine
       Policies:
         - DynamoDBCrudPolicy:
@@ -140,7 +139,6 @@ Resources:
   ContentDNATable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: content_dna_evolution
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: content_id
@@ -160,7 +158,6 @@ Resources:
   ContentArchiveBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub 'content-dna-archive-${AWS::AccountId}'
       LifecycleConfiguration:
         Rules:
           - Id: ArchiveOldContent
@@ -168,6 +165,101 @@ Resources:
             Transitions:
               - TransitionInDays: 90
                 StorageClass: GLACIER
+
+  # ──── S3 Bucket (Frontend Hosting) ─────────────────────────────────────────
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Statement:
+          - Sid: AllowCloudFrontOAC
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub '${FrontendBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${FrontendDistribution}'
+
+  # ──── CloudFront Distribution ──────────────────────────────────────────────
+  FrontendOAC:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub 'content-dna-os-oac-${AWS::AccountId}'
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  FrontendDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        DefaultRootObject: index.html
+        Comment: Content DNA OS Frontend
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt FrontendBucket.RegionalDomainName
+            OriginAccessControlId: !Ref FrontendOAC
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+          - Id: ApiOrigin
+            DomainName: !Sub '${ContentDNAApi}.execute-api.${AWS::Region}.amazonaws.com'
+            OriginPath: /prod
+            CustomOriginConfig:
+              HTTPSPort: 443
+              OriginProtocolPolicy: https-only
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS]
+          CachedMethods: [GET, HEAD]
+          ForwardedValues:
+            QueryString: false
+          Compress: true
+        CacheBehaviors:
+          - PathPattern: /api/*
+            TargetOriginId: ApiOrigin
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            CachedMethods: [GET, HEAD]
+            ForwardedValues:
+              QueryString: true
+              Headers:
+                - Content-Type
+                - Authorization
+            DefaultTTL: 0
+            MinTTL: 0
+            MaxTTL: 0
+          - PathPattern: /health*
+            TargetOriginId: ApiOrigin
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [GET, HEAD, OPTIONS]
+            CachedMethods: [GET, HEAD]
+            ForwardedValues:
+              QueryString: false
+            DefaultTTL: 0
+            MinTTL: 0
+            MaxTTL: 0
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
 
 Outputs:
   ApiUrl:
@@ -179,3 +271,12 @@ Outputs:
   TableName:
     Description: DynamoDB Table Name
     Value: !Ref ContentDNATable
+  FrontendBucket:
+    Description: S3 bucket for frontend assets
+    Value: !Ref FrontendBucket
+  FrontendUrl:
+    Description: CloudFront URL for the frontend
+    Value: !Sub 'https://${FrontendDistribution.DomainName}'
+  CloudFrontDistributionId:
+    Description: CloudFront distribution ID (for cache invalidation)
+    Value: !Ref FrontendDistribution

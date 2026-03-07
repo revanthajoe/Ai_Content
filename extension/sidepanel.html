@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Content DNA OS</title>
+  <link rel="stylesheet" href="popup.css">
+  <style>
+    body {
+      width: 100%;
+      min-height: 100vh;
+      max-height: none;
+    }
+  </style>
+</head>
+<body>
+  <!-- Reuses the same popup UI but full-height for side panel -->
+  <div id="app">
+    <header class="header">
+      <div class="logo">
+        <img src="icons/icon-32.png" alt="DNA OS" />
+        <h1>Content DNA OS</h1>
+      </div>
+      <div class="header-actions">
+        <button id="btn-extract-page" class="btn btn-sm btn-secondary" title="Extract DNA from current page">
+          Page DNA
+        </button>
+      </div>
+    </header>
+    <nav class="tabs">
+      <button class="tab active" data-tab="evolve">Evolve</button>
+      <button class="tab" data-tab="lab">Lab</button>
+      <button class="tab" data-tab="dna">DNA</button>
+      <button class="tab" data-tab="settings">Settings</button>
+    </nav>
+    <div class="tab-content active" id="tab-evolve">
+      <div class="form-group">
+        <label>Content</label>
+        <textarea id="evolve-content" rows="8" placeholder="Paste content to evolve..."></textarea>
+      </div>
+      <div class="row">
+        <div class="form-group flex-1">
+          <label>Platform</label>
+          <select id="evolve-platform">
+            <option value="general">General</option>
+            <option value="twitter">Twitter / X</option>
+            <option value="linkedin">LinkedIn</option>
+            <option value="instagram">Instagram</option>
+            <option value="youtube">YouTube</option>
+            <option value="blog">Blog</option>
+          </select>
+        </div>
+        <div class="form-group flex-1">
+          <label>Language</label>
+          <select id="evolve-language">
+            <option value="english">English</option>
+            <option value="hindi">Hindi</option>
+            <option value="tamil">Tamil</option>
+            <option value="telugu">Telugu</option>
+            <option value="bengali">Bengali</option>
+            <option value="marathi">Marathi</option>
+            <option value="kannada">Kannada</option>
+            <option value="gujarati">Gujarati</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Strategy</label>
+        <select id="evolve-strategy">
+          <option value="">Auto-select best</option>
+          <option value="hook_amplification">Hook Amplification</option>
+          <option value="angle_shift">Angle Shift</option>
+          <option value="story_reframe">Story Reframe</option>
+          <option value="counterpoint_injection">Counterpoint Injection</option>
+          <option value="summary_distillation">Summary Distillation</option>
+          <option value="platform_formatting">Platform Formatting</option>
+          <option value="regional_adaptation">Regional Adaptation</option>
+        </select>
+      </div>
+      <button id="btn-evolve" class="btn btn-primary btn-full">
+        <span class="btn-text">Evolve Content</span>
+        <span class="btn-loading hidden">Evolving...</span>
+      </button>
+      <div id="evolve-result" class="result hidden"></div>
+    </div>
+    <div class="tab-content" id="tab-lab">
+      <div class="form-group">
+        <label>Content</label>
+        <textarea id="lab-content" rows="8" placeholder="Paste content for multi-generation evolution..."></textarea>
+      </div>
+      <div class="row">
+        <div class="form-group flex-1">
+          <label>Platform</label>
+          <select id="lab-platform">
+            <option value="general">General</option>
+            <option value="twitter">Twitter / X</option>
+            <option value="linkedin">LinkedIn</option>
+            <option value="instagram">Instagram</option>
+            <option value="youtube">YouTube</option>
+            <option value="blog">Blog</option>
+          </select>
+        </div>
+        <div class="form-group flex-1">
+          <label>Generations</label>
+          <select id="lab-generations">
+            <option value="2">2</option>
+            <option value="3" selected>3</option>
+            <option value="5">5</option>
+          </select>
+        </div>
+      </div>
+      <button id="btn-lab" class="btn btn-primary btn-full">
+        <span class="btn-text">Run Evolution Lab</span>
+        <span class="btn-loading hidden">Evolving...</span>
+      </button>
+      <div id="lab-result" class="result hidden"></div>
+    </div>
+    <div class="tab-content" id="tab-dna">
+      <div class="form-group">
+        <label>Content</label>
+        <textarea id="dna-content" rows="8" placeholder="Paste content to extract DNA..."></textarea>
+      </div>
+      <button id="btn-dna" class="btn btn-primary btn-full">
+        <span class="btn-text">Extract DNA</span>
+        <span class="btn-loading hidden">Analyzing...</span>
+      </button>
+      <div id="dna-result" class="result hidden"></div>
+    </div>
+    <div class="tab-content" id="tab-settings">
+      <div class="form-group">
+        <label>API Server URL</label>
+        <input type="url" id="settings-api-url" placeholder="https://your-api-domain.com/api" />
+        <small>Your deployed Content DNA OS backend URL</small>
+      </div>
+      <button id="btn-save-settings" class="btn btn-primary btn-full">Save Settings</button>
+      <div id="settings-status" class="status hidden"></div>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

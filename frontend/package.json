@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:extension": "node ../build-extension.js",
+    "build:extension:chrome": "node ../build-extension.js chrome",
+    "build:extension:firefox": "node ../build-extension.js firefox"
   },
   "dependencies": {
     "react": "^18.3.1",
